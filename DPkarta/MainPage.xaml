@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DPkarta.MainPage"
+             BackgroundColor="White">
+
+    <ScrollView>
+        <VerticalStackLayout
+            Padding="5"
+            Spacing="25"
+            VerticalOptions="Center">
+
+            <WebView
+            x:Name="QRWebView"
+                IsVisible="False"
+            HorizontalOptions="Center"
+            VerticalOptions="Center"/>
+
+            <Entry
+                IsVisible="True"
+                x:Name="UsernameEntry"
+                Placeholder="Username"
+                Keyboard="Email"
+                TextColor="Black"
+                BackgroundColor="White"
+                PlaceholderColor="Gray"
+                Margin="0,20,0,0" />
+            <Entry
+                IsVisible="True"
+                x:Name="PasswordEntry"
+                Placeholder="Password"
+                IsPassword="True"
+                TextColor="Black"
+                BackgroundColor="White"
+                PlaceholderColor="Gray" />
+
+            <Picker
+                x:Name="CardPicker"
+                IsVisible="False"
+                Title="Select Card"
+                SelectedIndexChanged="OnPickerSelectedIndexChanged"/>
+
+            <Button
+                x:Name="RefreshButton"
+                IsVisible="False"
+                Text="Refresh QR"
+                TextColor="White"
+                BackgroundColor="Red"
+                Clicked="RefreshButton_Clicked"
+                HorizontalOptions="FillAndExpand"
+                CornerRadius="10"
+                Padding="10,5" />
+
+            <Button
+                x:Name="Button"
+                IsVisible="True"
+                Text="Login"
+                TextColor="White"
+                BackgroundColor="DodgerBlue"
+                Clicked="OnLoginClicked"
+                HorizontalOptions="FillAndExpand"
+                CornerRadius="10"
+                Padding="10,5" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>
