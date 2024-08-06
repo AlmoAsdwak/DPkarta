@@ -8,31 +8,59 @@
         <VerticalStackLayout
             Padding="5"
             Spacing="25"
-            VerticalOptions="Center">
+            VerticalOptions="CenterAndExpand">
+
+            <Label
+                x:Name="LabelA"
+                IsVisible="True"
+                Text="Přihlaš se"
+                FontSize="30"
+                TextColor="#d10a19"
+                HorizontalOptions="CenterAndExpand"
+                VerticalOptions="CenterAndExpand"/>
 
             <WebView
             x:Name="QRWebView"
                 IsVisible="False"
-            HorizontalOptions="Center"
-            VerticalOptions="Center"/>
+            HorizontalOptions="CenterAndExpand"
+            VerticalOptions="CenterAndExpand"/>
 
-            <Entry
+
+            <Frame
+                x:Name="FrameA"
                 IsVisible="True"
-                x:Name="UsernameEntry"
-                Placeholder="Username"
-                Keyboard="Email"
-                TextColor="Black"
-                BackgroundColor="White"
-                PlaceholderColor="Gray"
-                Margin="0,20,0,0" />
-            <Entry
+                BackgroundColor="#F4C300"
+                CornerRadius="10"
+                Padding="10"
+                HasShadow="True">
+                    <Entry
+                    IsVisible="True"
+                    x:Name="UsernameEntry"
+                    Placeholder="Username"
+                    Keyboard="Email"
+                    TextColor="Black"
+                    BackgroundColor="White"
+                    PlaceholderColor="Gray"
+                    Margin="0,0,0,0" />
+            </Frame>
+            <Frame
                 IsVisible="True"
-                x:Name="PasswordEntry"
-                Placeholder="Password"
-                IsPassword="True"
-                TextColor="Black"
-                BackgroundColor="White"
-                PlaceholderColor="Gray" />
+                x:Name="FrameB"
+                BackgroundColor="#F4C300"
+                CornerRadius="10"
+                Padding="10"
+                HasShadow="True">
+                    <Entry
+                    IsVisible="True"
+                    x:Name="PasswordEntry"
+                    Placeholder="Password"
+                    IsPassword="True"
+                    TextColor="Black"
+                    BackgroundColor="White"
+                    PlaceholderColor="Gray" />
+
+            </Frame>
+
 
             <Picker
                 x:Name="CardPicker"
@@ -45,7 +73,7 @@
                 IsVisible="False"
                 Text="Refresh QR"
                 TextColor="White"
-                BackgroundColor="Red"
+                BackgroundColor="#d10a19"
                 Clicked="RefreshButton_Clicked"
                 HorizontalOptions="FillAndExpand"
                 CornerRadius="10"
@@ -56,7 +84,7 @@
                 IsVisible="True"
                 Text="Login"
                 TextColor="White"
-                BackgroundColor="DodgerBlue"
+                BackgroundColor="#d10a19"
                 Clicked="OnLoginClicked"
                 HorizontalOptions="FillAndExpand"
                 CornerRadius="10"

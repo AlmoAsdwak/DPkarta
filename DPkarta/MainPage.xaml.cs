@@ -20,12 +20,9 @@ namespace DPkarta
         {
             if (SecureStorage.GetAsync("user").Result != null)
             {
+                //logging out
                 SecureStorage.Remove("user");
-                QRWebView.IsVisible = false;
-                UsernameEntry.IsVisible = true;
-                PasswordEntry.IsVisible = true;
-                RefreshButton.IsVisible = false;
-                CardPicker.IsVisible = false;
+                ChangeScreens(true);
                 Button.Text = "Login";
                 return;
             }
@@ -37,12 +34,10 @@ namespace DPkarta
             }
             else if (user.wertyzUser.cards.Count() == 1)
             {
+                //logging in
                 snr = user.wertyzUser.cards[0].snr;
                 SecureStorage.SetAsync("user", snr);
-                QRWebView.IsVisible = true;
-                UsernameEntry.IsVisible = false;
-                PasswordEntry.IsVisible = false;
-                RefreshButton.IsVisible = true;
+                ChangeScreens(false);
                 Button.Text = "Logout";
                 LoadImage();
             }
@@ -61,13 +56,10 @@ namespace DPkarta
         {
             if (CardPicker.SelectedIndex != -1)
             {
+                //logging in
                 snr = CardPicker.Items[CardPicker.SelectedIndex];
                 SecureStorage.SetAsync("user", snr);
-                QRWebView.IsVisible = true;
-                UsernameEntry.IsVisible = false;
-                PasswordEntry.IsVisible = false;
-                RefreshButton.IsVisible = true;
-                CardPicker.IsVisible = false;
+                ChangeScreens(false);
                 Button.Text = "Logout";
                 LoadImage();
             }
@@ -78,10 +70,8 @@ namespace DPkarta
             snr = SecureStorage.GetAsync("user").Result ?? "";
             if (snr != "")
             {
-                UsernameEntry.IsVisible = false;
-                PasswordEntry.IsVisible = false;
-                QRWebView.IsVisible = true;
-                RefreshButton.IsVisible = true;
+                //logging in
+                ChangeScreens(false);
                 Button.Text = "Logout";
                 LoadImage();
             }
@@ -93,12 +83,10 @@ namespace DPkarta
             var card = services.GetCard(snr, dpmhkID).data;
             if (card == null)
             {
+                //logging out
                 DisplayAlert("Error", "No card found, logging out", "OK");
                 SecureStorage.Remove("user");
-                QRWebView.IsVisible = false;
-                UsernameEntry.IsVisible = true;
-                PasswordEntry.IsVisible = true;
-                RefreshButton.IsVisible = false;
+                ChangeScreens(true);
                 Button.Text = "Login";
                 return;
             }
@@ -106,6 +94,16 @@ namespace DPkarta
             {
                 Html = services.GetQR(card).Content
             };
+        }
+        private void ChangeScreens(bool isLogin)
+        {
+            LabelA.IsVisible = isLogin;
+            FrameA.IsVisible = isLogin;
+            FrameB.IsVisible = isLogin;
+            QRWebView.IsVisible = !isLogin;
+            UsernameEntry.IsVisible = isLogin;
+            PasswordEntry.IsVisible = isLogin;
+            RefreshButton.IsVisible = !isLogin;
         }
 
         private void RefreshButton_Clicked(object sender, EventArgs e) => LoadImage();
