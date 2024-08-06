@@ -10,7 +10,7 @@ namespace DPkarta
     {
         int dpmhkID = 3903132;
         string snr = "";
-        Services services = new Services();
+        Services services = new();
         public MainPage()
         {
             InitializeComponent();
