@@ -27,31 +27,45 @@ namespace DPkarta
                 return;
             }
 
-            User user = services.Login(UsernameEntry.Text, PasswordEntry.Text, dpmhkID);
-            if (user == null)
+            string loginURI = "https://m.dpmhk.qrbus.me/api/auth/signIn";
+
+            var json = services.Post(loginURI, $"{{\"organizationSystemEntityId\": {dpmhkID},\"login\":\"{UsernameEntry.Text}\",\"password\":\"{PasswordEntry.Text}\"}}");
+            if (json == "notfound")
+            {
+                DisplayAlert("Error", "No internet connection", "OK");
+                return;
+            }
+            if (json == "error")
+            {
+                DisplayAlert("Error", "Something went wrong, please contant developer", "OK");
+                return;
+            }
+
+            if (json.Contains("loginError.password") || json.Contains("loginError.login"))
             {
                 DisplayAlert("Error", "Wrong password", "OK");
+                return;
             }
-            else if (user.wertyzUser.cards.Count() == 1)
+
+            var user = JsonSerializer.Deserialize<User>(json);
+
+            if (user == null || !user.success || user.wertyzUser == null)
             {
-                //logging in
-                snr = user.wertyzUser.cards[0].snr;
-                SecureStorage.SetAsync("user", snr);
-                ChangeScreens(false);
-                Button.Text = "Logout";
-                LoadImage();
+                DisplayAlert("Error", "Wrong password", "OK");
+                return;
             }
-            else if (user.wertyzUser.cards.Count() > 1)
+
+            switch (user)
             {
-                CardPicker.ItemsSource = user.wertyzUser.cards.Select(c => c.ownerFirstName + " " + c.ownerLastName).ToList();
-                CardPicker.IsVisible = true;
-            }
-            else
-            {
-                DisplayAlert("Error", "No card found", "OK");
+                case { wertyzUser: { cards: { Length: 1 } } }: snr = user.wertyzUser.cards[0].snr; SecureStorage.SetAsync("user", snr); ChangeScreens(false); Button.Text = "Logout"; LoadImage(); break;
+                case { wertyzUser: { cards: { Length: > 1 } } }: 
+                    CardPicker.ItemsSource = user.wertyzUser.cards.Select(c => c.ownerFirstName + " " + c.ownerLastName).ToList();
+                    CardPicker.IsVisible = true; 
+                    break;
+                default:
+                    DisplayAlert("Error", "No card found", "OK"); break;
             }
         }
-
         private void OnPickerSelectedIndexChanged(object sender, EventArgs e)
         {
             if (CardPicker.SelectedIndex != -1)
@@ -80,8 +94,25 @@ namespace DPkarta
 
         private void LoadImage()
         {
-            var card = services.GetCard(snr, dpmhkID).data;
-            if (card == null)
+            string cardURI = "https://m.dpmhk.qrbus.me/api/rest/publiccards/encryptCardData";
+
+            var json = services.Post(cardURI, $"{{\"organizationSystemEntityId\": {dpmhkID},\"cardSnr\": \"{snr}\"}}");
+            if (json == "notfound")
+            {
+                DisplayAlert("Error", "No internet connection", "OK");
+                return;
+            }
+            if (json == "error")
+            {
+                DisplayAlert("Error", "Something went wrong, please contant developer", "OK");
+                return;
+            }
+
+            var cardstruct = JsonSerializer.Deserialize<CardImage>(json);
+
+            
+
+            if (cardstruct == null || !cardstruct.success || cardstruct.data == null)
             {
                 //logging out
                 DisplayAlert("Error", "No card found, logging out", "OK");
@@ -90,6 +121,10 @@ namespace DPkarta
                 Button.Text = "Login";
                 return;
             }
+
+            var card = cardstruct.data;
+
+
             QRWebView.Source = new HtmlWebViewSource
             {
                 Html = services.GetQR(card).Content
@@ -107,5 +142,7 @@ namespace DPkarta
         }
 
         private void RefreshButton_Clicked(object sender, EventArgs e) => LoadImage();
+
+
     }
 }
