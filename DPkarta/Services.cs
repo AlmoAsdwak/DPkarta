@@ -15,15 +15,13 @@ namespace DPkarta
         {
             try
             {
-                HttpClient client = new();
                 var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
 
+                HttpClient client = new();
                 HttpResponseMessage response = client.PostAsync(url, content).Result;
 
-                if (!response.IsSuccessStatusCode)
-                    return "error";
+                return response.IsSuccessStatusCode ? response.Content.ReadAsStringAsync().Result : "error";
 
-                return response.Content.ReadAsStringAsync().Result;
             }
             catch (Exception)
             {
@@ -45,7 +43,7 @@ namespace DPkarta
 
             var writer = new BarcodeWriterSvg
             {
-                
+
                 Format = BarcodeFormat.QR_CODE,
                 Options = options
             };

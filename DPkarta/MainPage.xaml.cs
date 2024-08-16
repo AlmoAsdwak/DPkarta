@@ -8,7 +8,7 @@ namespace DPkarta
 {
     public partial class MainPage : ContentPage
     {
-        int dpmhkID = 3903132;
+        const int dpmhkID = 3903132;
         string snr = "";
         Services services = new();
         public MainPage()
@@ -26,6 +26,24 @@ namespace DPkarta
                 Button.Text = "Login";
                 return;
             }
+
+
+            try
+            {
+                if (SecureStorage.GetAsync("user").Result != null)
+                {
+                    //logging out
+                    SecureStorage.Remove("user");
+                    ChangeScreens(true);
+                    Button.Text = "Login";
+                    return;
+                }
+            }
+            catch (Exception)
+            {
+
+            }
+
 
             string loginURI = "https://m.dpmhk.qrbus.me/api/auth/signIn";
 
@@ -57,13 +75,9 @@ namespace DPkarta
 
             switch (user)
             {
-                case { wertyzUser: { cards: { Length: 1 } } }: snr = user.wertyzUser.cards[0].snr; SecureStorage.SetAsync("user", snr); ChangeScreens(false); Button.Text = "Logout"; LoadImage(); break;
-                case { wertyzUser: { cards: { Length: > 1 } } }: 
-                    CardPicker.ItemsSource = user.wertyzUser.cards.Select(c => c.ownerFirstName + " " + c.ownerLastName).ToList();
-                    CardPicker.IsVisible = true; 
-                    break;
-                default:
-                    DisplayAlert("Error", "No card found", "OK"); break;
+                case { wertyzUser.cards.Length: 1 }: snr = user.wertyzUser.cards[0].snr; SecureStorage.SetAsync("user", snr); ChangeScreens(false); Button.Text = "Logout"; LoadImage(); break;
+                case { wertyzUser.cards.Length: > 1 }: CardPicker.ItemsSource = user.wertyzUser.cards.Select(c => c.ownerFirstName + " " + c.ownerLastName).ToList(); CardPicker.IsVisible = true; break;
+                default: DisplayAlert("Error", "No card found", "OK"); break;
             }
         }
         private void OnPickerSelectedIndexChanged(object sender, EventArgs e)
@@ -81,15 +95,26 @@ namespace DPkarta
 
         protected override void OnAppearing()
         {
-            snr = SecureStorage.GetAsync("user").Result ?? "";
-            if (snr != "")
+            try
             {
-                //logging in
-                ChangeScreens(false);
-                Button.Text = "Logout";
-                LoadImage();
+                snr = SecureStorage.GetAsync("user").Result ?? "";
+                if (snr != "")
+                {
+                    //logging in
+                    ChangeScreens(false);
+                    Button.Text = "Logout";
+                    LoadImage();
+                }
             }
-            base.OnAppearing();
+            catch (Exception)
+            {
+
+            }
+            finally
+            {
+                base.OnAppearing();
+            }
+
         }
 
         private void LoadImage()
@@ -110,7 +135,7 @@ namespace DPkarta
 
             var cardstruct = JsonSerializer.Deserialize<CardImage>(json);
 
-            
+
 
             if (cardstruct == null || !cardstruct.success || cardstruct.data == null)
             {
