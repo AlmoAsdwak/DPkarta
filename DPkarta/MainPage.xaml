@@ -89,6 +89,15 @@
                 HorizontalOptions="FillAndExpand"
                 CornerRadius="10"
                 Padding="10,5" />
+            <Button
+                IsVisible="True"
+                Text="Zásady Soukromí"
+                TextColor="White"
+                BackgroundColor="#d10a19"
+                Clicked="OpenPrivacyPolicy"
+                HorizontalOptions="FillAndExpand"
+                CornerRadius="10"
+                Padding="10,5" />
 
         </VerticalStackLayout>
     </ScrollView>

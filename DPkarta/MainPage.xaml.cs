@@ -161,6 +161,7 @@ namespace DPkarta
             RefreshButton.IsVisible = !isLogin;
         }
         private void RefreshButton_Clicked(object sender, EventArgs e) => LoadImage();
+        private async void OpenPrivacyPolicy(object sender, EventArgs e) => await Launcher.OpenAsync(new Uri("http://whoisalmo.cz/soukromi"));
 
     }
 }
