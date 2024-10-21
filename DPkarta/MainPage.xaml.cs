@@ -1,7 +1,10 @@
-﻿using System.Text.Json;
+﻿using ZXing;
+using ZXing.Common;
+using System.Text.Json;
+using System.Net;
+using System.Text;
 using CommunityToolkit.Mvvm.Messaging;
 using Plugin.Maui.ScreenBrightness;
-
 namespace DPkarta
 {
     public partial class MainPage : ContentPage
@@ -14,23 +17,17 @@ namespace DPkarta
         public MainPage()
         {
             InitializeComponent();
-            normalBrightness = ScreenBrightness.Default.Brightness;
             WeakReferenceMessenger.Default.Register<DPkarta.Message>(this, (sender, args) =>
             {
                 switch (args.message)
                 {
                     case "resume":
-                        if (SecureStorage.GetAsync("user").Result == null)
-                            break;
-
                         normalBrightness = ScreenBrightness.Default.Brightness;
                         ScreenBrightness.Default.Brightness = 1;
                         LoadImage();
                         break;
                     case "sleep":
-                        if (SecureStorage.GetAsync("user").Result == null)
-                            break;
-                        ScreenBrightness.Default.Brightness = normalBrightness;
+                        ScreenBrightness.Default.Brightness =normalBrightness;
                         break;
                 }
             });
@@ -39,6 +36,7 @@ namespace DPkarta
         {
             if (SecureStorage.GetAsync("user").Result != null)
             {
+                //logging out
                 SecureStorage.Remove("user");
                 ChangeScreens(true);
                 Button.Text = "Login";
@@ -90,30 +88,42 @@ namespace DPkarta
         }
         private void OnPickerSelectedIndexChanged(object sender, EventArgs e)
         {
-            if (CardPicker.SelectedIndex == -1)
-                return;
-            snr = CardPicker.Items[CardPicker.SelectedIndex];
-            SecureStorage.SetAsync("user", snr);
-            ChangeScreens(false);
-            Button.Text = "Logout";
-            LoadImage();
-            normalBrightness = ScreenBrightness.Default.Brightness;
-            ScreenBrightness.Default.Brightness = 1;
-
-        }
-        protected override void OnAppearing()
-        {
-            snr = SecureStorage.GetAsync("user").Result ?? "";
-            if (snr != "")
+            if (CardPicker.SelectedIndex != -1)
             {
                 //logging in
+                snr = CardPicker.Items[CardPicker.SelectedIndex];
+                SecureStorage.SetAsync("user", snr);
                 ChangeScreens(false);
                 Button.Text = "Logout";
                 LoadImage();
                 normalBrightness = ScreenBrightness.Default.Brightness;
                 ScreenBrightness.Default.Brightness = 1;
             }
-            base.OnAppearing();
+        }
+        protected override void OnAppearing()
+        {
+            try
+            {
+                snr = SecureStorage.GetAsync("user").Result ?? "";
+                if (snr != "")
+                {
+                    //logging in
+                    ChangeScreens(false);
+                    Button.Text = "Logout";
+                    LoadImage();
+                    normalBrightness = ScreenBrightness.Default.Brightness;
+                    ScreenBrightness.Default.Brightness = 1;
+                }
+            }
+            catch (Exception)
+            {
+
+            }
+            finally
+            {
+                base.OnAppearing();
+            }
+
         }
         private void LoadImage()
         {
@@ -133,6 +143,8 @@ namespace DPkarta
 
             var cardstruct = JsonSerializer.Deserialize<CardImage>(json);
 
+
+
             if (cardstruct == null || !cardstruct.success || cardstruct.data == null)
             {
                 //logging out
@@ -144,6 +156,7 @@ namespace DPkarta
             }
 
             var card = cardstruct.data;
+
 
             QRWebView.Source = new HtmlWebViewSource
             {
