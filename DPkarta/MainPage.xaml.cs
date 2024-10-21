@@ -13,6 +13,7 @@ namespace DPkarta
         public float normalBrightness = 1;
         const int dpmhkID = 3903132;
         string snr = "";
+        Cookie? cookie = null;
         Services services = new();
         public MainPage()
         {
@@ -27,7 +28,7 @@ namespace DPkarta
                         LoadImage();
                         break;
                     case "sleep":
-                        ScreenBrightness.Default.Brightness =normalBrightness;
+                        ScreenBrightness.Default.Brightness = normalBrightness;
                         break;
                 }
             });
@@ -37,14 +38,14 @@ namespace DPkarta
             if (SecureStorage.GetAsync("user").Result != null)
             {
                 //logging out
-                SecureStorage.Remove("user");
+                SecureStorage.RemoveAll();
                 ChangeScreens(true);
                 Button.Text = "Login";
                 ScreenBrightness.Default.Brightness = normalBrightness;
                 return;
             }
 
-            var json = services.Post(loginURI, $"{{\"organizationSystemEntityId\": {dpmhkID},\"login\":\"{UsernameEntry.Text}\",\"password\":\"{PasswordEntry.Text}\"}}");
+            var json = services.Post(loginURI, $"{{\"organizationSystemEntityId\": {dpmhkID},\"login\":\"{UsernameEntry.Text}\",\"password\":\"{PasswordEntry.Text}\"}}", out cookie);
             if (json == "notfound")
             {
                 DisplayAlert("Error", "No internet connection", "OK");
@@ -60,7 +61,11 @@ namespace DPkarta
                 DisplayAlert("Error", "Wrong password", "OK");
                 return;
             }
-
+            if (cookie == null)
+            {
+                DisplayAlert("Error", "No internet connection", "OK");
+                return;
+            }
             var user = JsonSerializer.Deserialize<User>(json);
 
             if (user == null || !user.success || user.wertyzUser == null)
@@ -69,12 +74,14 @@ namespace DPkarta
                 return;
             }
 
+            SecureStorage.SetAsync("cookie", cookie.ToString());
             switch (user)
             {
                 case { wertyzUser.cards.Length: 1 }:
                     snr = user.wertyzUser.cards[0].snr;
                     SecureStorage.SetAsync("user", snr);
-                    ChangeScreens(false); Button.Text = "Logout";
+                    ChangeScreens(false);
+                    Button.Text = "Logout";
                     LoadImage();
                     normalBrightness = ScreenBrightness.Default.Brightness;
                     ScreenBrightness.Default.Brightness = 1;
@@ -83,7 +90,7 @@ namespace DPkarta
                     CardPicker.ItemsSource = user.wertyzUser.cards.Select(c => c.ownerFirstName + " " + c.ownerLastName).ToList();
                     CardPicker.IsVisible = true;
                     break;
-                default: DisplayAlert("Error", "No card found", "OK"); break;
+                default: DisplayAlert("Error", "No card found", "OK"); SecureStorage.RemoveAll(); break;
             }
         }
         private void OnPickerSelectedIndexChanged(object sender, EventArgs e)
@@ -105,14 +112,14 @@ namespace DPkarta
             try
             {
                 snr = SecureStorage.GetAsync("user").Result ?? "";
-                if (snr != "")
+                cookie =  new Cookie("connect.sid", SecureStorage.GetAsync("cookie").Result!["connect.sid=".Length..]) ?? null;
+                if (snr != "" || cookie == null)
                 {
-                    //logging in
-                    ChangeScreens(false);
-                    Button.Text = "Logout";
-                    LoadImage();
-                    normalBrightness = ScreenBrightness.Default.Brightness;
-                    ScreenBrightness.Default.Brightness = 1;
+                    //logging out
+                    DisplayAlert("Error", "No card found, logging out", "OK");
+                    SecureStorage.RemoveAll();
+                    ChangeScreens(true);
+                    Button.Text = "Login";
                 }
             }
             catch (Exception)
@@ -129,7 +136,7 @@ namespace DPkarta
         {
             string cardURI = "https://m.dpmhk.qrbus.me/api/rest/publiccards/encryptCardData";
 
-            var json = services.Post(cardURI, $"{{\"organizationSystemEntityId\": {dpmhkID},\"cardSnr\": \"{snr}\"}}");
+            var json = services.CookiePost(cardURI, $"{{\"organizationSystemEntityId\": {dpmhkID},\"cardSnr\": \"{snr}\"}}", cookie!);
             if (json == "notfound")
             {
                 DisplayAlert("Error", "No internet connection", "OK");
@@ -149,9 +156,10 @@ namespace DPkarta
             {
                 //logging out
                 DisplayAlert("Error", "No card found, logging out", "OK");
-                SecureStorage.Remove("user");
+                SecureStorage.RemoveAll();
                 ChangeScreens(true);
                 Button.Text = "Login";
+                ScreenBrightness.Default.Brightness = normalBrightness;
                 return;
             }
 
@@ -168,9 +176,9 @@ namespace DPkarta
             LabelA.IsVisible = isLogin;
             FrameA.IsVisible = isLogin;
             FrameB.IsVisible = isLogin;
-            QRWebView.IsVisible = !isLogin;
             UsernameEntry.IsVisible = isLogin;
             PasswordEntry.IsVisible = isLogin;
+            QRWebView.IsVisible = !isLogin;
             RefreshButton.IsVisible = !isLogin;
         }
         private void RefreshButton_Clicked(object sender, EventArgs e) => LoadImage();
