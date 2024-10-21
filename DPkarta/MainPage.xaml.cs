@@ -25,13 +25,12 @@ namespace DPkarta
                     case "resume":
                         if (SecureStorage.GetAsync("user").Result == null)
                             break;
+
                         normalBrightness = ScreenBrightness.Default.Brightness;
                         ScreenBrightness.Default.Brightness = 1;
                         LoadImage();
                         break;
                     case "sleep":
-                        if (SecureStorage.GetAsync("user").Result == null)
-                            break;
                         ScreenBrightness.Default.Brightness = normalBrightness;
                         break;
                 }
@@ -77,10 +76,10 @@ namespace DPkarta
                 DisplayAlert("Error", "Wrong password", "OK");
                 return;
             }
-
             SecureStorage.SetAsync("cookie", cookie.ToString());
             SecureStorage.SetAsync("username", UsernameEntry.Text);
             SecureStorage.SetAsync("password", PasswordEntry.Text);
+
             switch (user)
             {
                 case { wertyzUser.cards.Length: 1 }:
@@ -100,7 +99,6 @@ namespace DPkarta
             }
         }
         private void OnPickerSelectedIndexChanged(object sender, EventArgs e)
-        {
             if (CardPicker.SelectedIndex == -1)
                 return;
             snr = CardPicker.Items[CardPicker.SelectedIndex];
@@ -110,9 +108,9 @@ namespace DPkarta
             LoadImage();
             normalBrightness = ScreenBrightness.Default.Brightness;
             ScreenBrightness.Default.Brightness = 1;
+
         }
         private void LoadImage()
-        {
             string cardURI = "https://m.dpmhk.qrbus.me/api/rest/publiccards/encryptCardData";
             if (snr == "")
             {
@@ -129,6 +127,7 @@ namespace DPkarta
                 services.Post(loginURI, $"{{\"organizationSystemEntityId\": {dpmhkID},\"login\":\"{SecureStorage.GetAsync("username")}\",\"password\":\"{PasswordEntry.Text}\"}}", out cookie);
             }
 
+            string cardURI = "https://m.dpmhk.qrbus.me/api/rest/publiccards/encryptCardData";
 
             var json = services.CookiePost(cardURI, $"{{\"organizationSystemEntityId\": {dpmhkID},\"cardSnr\": \"{snr}\"}}", cookie!);
             if (json == "notfound")
@@ -149,8 +148,8 @@ namespace DPkarta
             if (cardstruct == null || !cardstruct.success || cardstruct.data == null)
             {
                 //logging out
-                DisplayAlert("Error", "No card found, logging out", "OK");
                 Logout();
+                Button.Text = "Login";
                 return;
             }
 

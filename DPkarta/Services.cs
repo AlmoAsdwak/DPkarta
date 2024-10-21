@@ -13,7 +13,9 @@ namespace DPkarta
     {
         public string CookiePost(string url, string jsonBody, Cookie cookie)
         {
-            try
+            var cookieContainer = new CookieContainer();
+            cookieContainer.Add(new Uri(url), cookie);
+            var handler = new HttpClientHandler
             {
 
                 var cookieContainer = new CookieContainer();
