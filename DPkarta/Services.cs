@@ -11,24 +11,58 @@ namespace DPkarta
 {
     public class Services
     {
-        public string Post(string url, string jsonBody)
+        public string CookiePost(string url, string jsonBody, Cookie cookie)
         {
             try
             {
+
+                var cookieContainer = new CookieContainer();
+                cookieContainer.Add(new Uri(url), cookie);
+                var handler = new HttpClientHandler
+                {
+                    CookieContainer = cookieContainer
+                };
                 var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-
-                HttpClient client = new();
-                HttpResponseMessage response = client.PostAsync(url, content).Result;
-
-                return response.IsSuccessStatusCode ? response.Content.ReadAsStringAsync().Result : "error";
+                using (var client = new HttpClient(handler))
+                {
+                    HttpResponseMessage response = client.PostAsync(url, content).Result;
+                    return response.IsSuccessStatusCode ? response.Content.ReadAsStringAsync().Result : "error";
+                }
 
             }
             catch (Exception)
             {
                 return "notfound";
             }
-
         }
+
+        public string Post(string url, string jsonBody, out Cookie? cookie)
+        {
+            cookie = null;
+            try
+            {
+                cookie = null;
+                var client = new HttpClient();
+                var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+                HttpResponseMessage response = client.PostAsync(url, content).Result;
+
+                cookie = new Cookie("connect.sid", response.Headers.GetValues("Set-Cookie")
+                .Where(x => x.StartsWith("connect.sid="))
+                .First()
+                .Split(';')
+                .FirstOrDefault()?
+                ["connect.sid=".Length..]);
+
+
+                return response.IsSuccessStatusCode ? response.Content.ReadAsStringAsync().Result : "error";
+            }
+            catch (Exception)
+            {
+
+                return "notfound";
+            }
+        }
+
         public SvgRenderer.SvgImage GetQR(string data)
         {
 
