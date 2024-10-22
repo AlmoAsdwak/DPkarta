@@ -11,13 +11,71 @@ namespace DPkarta
 {
     public class Services
     {
-        public string CookiePost(string url, string jsonBody, Cookie cookie)
+        public string CookieAttempt()
         {
-            var cookieContainer = new CookieContainer();
-            cookieContainer.Add(new Uri(url), cookie);
-            var handler = new HttpClientHandler
+            string json = GetCookie();
+            switch (json)
             {
+                //TODO do it
+                case "nologinstored":
+                    break;
+                case "error":
+                    break;
+                case "nointernet":
+                    break;
+            }
+            var user = JsonSerializer.Deserialize<User>(json);
+            if (user == null || !user.success || user.wertyzUser == null)
+                return "badlogincredentials";
+            SecureStorage.SetAsync("user", user.wertyzUser.cards[0].snr);
+            return "ok";
+        }
+        public string GetCookie()
+        {
+            var username = SecureStorage.GetAsync("username").Result;
+            var password = SecureStorage.GetAsync("password").Result;
+            if (username == null || password == null)
+                return "nologinstored";
+            var errcode = Post(MainPage.tokenURI, $"{{\"organizationSystemEntityId\": {MainPage.dpmhkID},\"login\":\"{username}\",\"password\":\"{password}\"}}", out Cookie? cookie);
+            if (cookie == null)
+                return "error";
+            switch (errcode)
+            {
+                case "notfound":
+                    return "nointernet";
+                case "error":
+                    return "error";
+                default:
+                    SecureStorage.SetAsync("cookie", cookie.ToString());
+                    return "ok";
 
+            }
+        }
+        public string GetIdentification()
+        {
+            var snr = SecureStorage.GetAsync("user").Result;
+            if (snr == null) return "nosnr";
+            var cookiestring = SecureStorage.GetAsync("cookie").Result;
+            if (cookiestring == null) return "nocookie";
+            Cookie cookie = Cookiefier(cookiestring);
+            if (cookie.Name == null || cookie.Value == null) return "badcookie";
+            var errcode = CookiePost(MainPage.loginURI, $"{{\"organizationSystemEntityId\": {MainPage.dpmhkID},\"cardSnr\": \"{snr}\"}}", cookie);
+            return errcode switch
+            {
+                "notfound" => "nointernet",
+                "error" => "badlogincredentials",
+                _ => errcode,
+            };
+        }
+        public static Cookie Cookiefier(string cookie)
+        {
+            int index = cookie.IndexOf('=');
+            return new Cookie(cookie[..index], cookie[(index + 1)..]);
+        }
+        private string CookiePost(string url, string jsonBody, Cookie cookie)
+        {
+            try
+            {
                 var cookieContainer = new CookieContainer();
                 cookieContainer.Add(new Uri(url), cookie);
                 var handler = new HttpClientHandler
@@ -37,8 +95,7 @@ namespace DPkarta
                 return "notfound";
             }
         }
-
-        public string Post(string url, string jsonBody, out Cookie? cookie)
+        private string Post(string url, string jsonBody, out Cookie? cookie)
         {
             cookie = null;
             try
@@ -64,7 +121,6 @@ namespace DPkarta
                 return "notfound";
             }
         }
-
         public SvgRenderer.SvgImage GetQR(string data)
         {
 
