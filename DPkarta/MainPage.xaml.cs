@@ -17,6 +17,7 @@ namespace DPkarta
         public MainPage()
         {
             InitializeComponent();
+            normalBrightness = ScreenBrightness.Default.Brightness;
             WeakReferenceMessenger.Default.Register<DPkarta.Message>(this, (sender, args) =>
             {
                 switch (args.message)
@@ -30,29 +31,36 @@ namespace DPkarta
                         LoadImage();
                         break;
                     case "sleep":
+                        if (SecureStorage.GetAsync("user").Result == null)
+                            break;
                         ScreenBrightness.Default.Brightness = normalBrightness;
                         break;
                 }
             });
         }
-        private void OnLoginClicked(object sender, EventArgs e)
+        private async void OnLoginClicked(object sender, EventArgs e)
         {
             if (SecureStorage.GetAsync("user").Result != null)
             {
-                //logging out
-                SecureStorage.RemoveAll();
-                ChangeScreens(true);
-                Button.Text = "Login";
-                ScreenBrightness.Default.Brightness = normalBrightness;
+                Logout();
                 return;
             }
-            SecureStorage.SetAsync("username", UsernameEntry.Text);
-            SecureStorage.SetAsync("password", PasswordEntry.Text);
+            await SecureStorage.SetAsync("username", UsernameEntry.Text);
+            await SecureStorage.SetAsync("password", PasswordEntry.Text);
             var errcode = services.CookieAttempt();
 
             switch (errcode)
             {
-                //TODO ..
+                case "nologinstored":
+                    Logout();
+                    await DisplayAlert("Error", "Logging out, contact developer", "OK");
+                    return;
+                case "error":
+                    await DisplayAlert("Error", "contact developer", "OK");
+                    return;
+                case "nointernet":
+                    await DisplayAlert("Error", "No internet", "OK");
+                    return;
             }
 
             ChangeScreens(false);
@@ -72,7 +80,17 @@ namespace DPkarta
                     DisplayAlert("Error", "No internet", "OK");
                     return;
                 case "nocookie":
-
+                    switch (services.CookieAttempt())
+                    {
+                        case "error":
+                        case "nologinstored":
+                            Logout();
+                            DisplayAlert("Error", "Logging out, contact developer", "OK");
+                            return;
+                        case "nointernet":
+                            DisplayAlert("Error", "No internet", "OK");
+                            return;
+                    }
                     break;
                 case "nosnr":
                 case "badlogincredentials":

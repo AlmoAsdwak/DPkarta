@@ -16,13 +16,13 @@ namespace DPkarta
             string json = GetCookie();
             switch (json)
             {
-                //TODO do it
                 case "nologinstored":
-                    break;
+                    return "logout";
                 case "error":
-                    break;
+                    return "error";
                 case "nointernet":
-                    break;
+                    return "nointernet";
+                default: break;
             }
             var user = JsonSerializer.Deserialize<User>(json);
             if (user == null || !user.success || user.wertyzUser == null)
@@ -36,7 +36,7 @@ namespace DPkarta
             var password = SecureStorage.GetAsync("password").Result;
             if (username == null || password == null)
                 return "nologinstored";
-            var errcode = Post(MainPage.tokenURI, $"{{\"organizationSystemEntityId\": {MainPage.dpmhkID},\"login\":\"{username}\",\"password\":\"{password}\"}}", out Cookie? cookie);
+            var errcode = Post(MainPage.loginURI, $"{{\"organizationSystemEntityId\": {MainPage.dpmhkID},\"login\":\"{username}\",\"password\":\"{password}\"}}", out Cookie? cookie);
             if (cookie == null)
                 return "error";
             switch (errcode)
@@ -47,7 +47,7 @@ namespace DPkarta
                     return "error";
                 default:
                     SecureStorage.SetAsync("cookie", cookie.ToString());
-                    return "ok";
+                    return errcode;
 
             }
         }
@@ -59,7 +59,7 @@ namespace DPkarta
             if (cookiestring == null) return "nocookie";
             Cookie cookie = Cookiefier(cookiestring);
             if (cookie.Name == null || cookie.Value == null) return "badcookie";
-            var errcode = CookiePost(MainPage.loginURI, $"{{\"organizationSystemEntityId\": {MainPage.dpmhkID},\"cardSnr\": \"{snr}\"}}", cookie);
+            var errcode = CookiePost(MainPage.tokenURI, $"{{\"organizationSystemEntityId\": {MainPage.dpmhkID},\"cardSnr\": \"{snr}\"}}", cookie);
             return errcode switch
             {
                 "notfound" => "nointernet",
@@ -100,7 +100,6 @@ namespace DPkarta
             cookie = null;
             try
             {
-                cookie = null;
                 var client = new HttpClient();
                 var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
                 HttpResponseMessage response = client.PostAsync(url, content).Result;

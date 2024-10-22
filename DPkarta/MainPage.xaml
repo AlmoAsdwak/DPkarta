@@ -50,7 +50,7 @@
                 CornerRadius="10"
                 Padding="10"
                 HasShadow="True">
-                    <Entry
+                <Entry
                     IsVisible="True"
                     x:Name="PasswordEntry"
                     Placeholder="Password"
@@ -60,13 +60,6 @@
                     PlaceholderColor="Gray" />
 
             </Frame>
-
-
-            <Picker
-                x:Name="CardPicker"
-                IsVisible="False"
-                Title="Select Card"
-                SelectedIndexChanged="OnPickerSelectedIndexChanged"/>
 
             <Button
                 x:Name="RefreshButton"
