@@ -27,13 +27,12 @@ namespace DPkarta
 
                         normalBrightness = ScreenBrightness.Default.Brightness;
                         ScreenBrightness.Default.Brightness = 1;
-                        LoadImage(false);
                         _timer?.Stop();
                         var datestring = SecureStorage.GetAsync("lastRefresh");
                         if (datestring.Result != null)
                         {
                             var lastRefresh = DateTime.ParseExact(datestring.Result, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-                            if (lastRefresh.AddSeconds(300).CompareTo(DateTime.Now) >= 0)
+                            if (lastRefresh.AddSeconds(300).CompareTo(DateTime.Now) < 0)
                             {
                                 LoadImage(false);
                             }
@@ -56,19 +55,14 @@ namespace DPkarta
             }
             else
             {
+                normalBrightness = ScreenBrightness.Default.Brightness;
+                ScreenBrightness.Default.Brightness = 1;
                 ChangeScreens(false);
                 Button.Text = "Logout";
-            }
-            var datestring = SecureStorage.GetAsync("lastRefresh");
-            if (datestring.Result != null)
-            {
-                var lastRefresh = DateTime.ParseExact(datestring.Result, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-                if (lastRefresh.AddSeconds(300).CompareTo(DateTime.Now) >= 0)
-                    LoadImage(false);
+
             }
             _timer?.Stop();
-            if (SecureStorage.GetAsync("user").Result == null)
-                return;
+            LoadImage(false);
             StartTimer();
         }
         void StartTimer()
