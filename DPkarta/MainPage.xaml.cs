@@ -1,8 +1,6 @@
-﻿using ZXing;
-using ZXing.Common;
+﻿using System.Globalization;
 using System.Text.Json;
-using System.Net;
-using System.Text;
+using System.Timers;
 using CommunityToolkit.Mvvm.Messaging;
 using Plugin.Maui.ScreenBrightness;
 namespace DPkarta
@@ -14,6 +12,7 @@ namespace DPkarta
         public float normalBrightness = 1;
         public const int dpmhkID = 3903132;
         Services services = new();
+        public required System.Timers.Timer _timer;
         public MainPage()
         {
             InitializeComponent();
@@ -28,32 +27,84 @@ namespace DPkarta
 
                         normalBrightness = ScreenBrightness.Default.Brightness;
                         ScreenBrightness.Default.Brightness = 1;
-                        LoadImage();
+                        LoadImage(false);
+                        _timer?.Stop();
+                        var datestring = SecureStorage.GetAsync("lastRefresh");
+                        if (datestring.Result != null)
+                        {
+                            var lastRefresh = DateTime.ParseExact(datestring.Result, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                            if (lastRefresh.AddSeconds(300).CompareTo(DateTime.Now) >= 0)
+                            {
+                                LoadImage(false);
+                            }
+                        }
+                        StartTimer();
                         break;
                     case "sleep":
                         if (SecureStorage.GetAsync("user").Result == null)
                             break;
                         ScreenBrightness.Default.Brightness = normalBrightness;
+                        _timer?.Stop();
                         break;
                 }
+            });
+            if (SecureStorage.GetAsync("user").Result == null)
+            {
+                Logout();
+                _timer?.Stop();
+                return;
+            }
+            else
+            {
+                ChangeScreens(false);
+                Button.Text = "Logout";
+            }
+            var datestring = SecureStorage.GetAsync("lastRefresh");
+            if (datestring.Result != null)
+            {
+                var lastRefresh = DateTime.ParseExact(datestring.Result, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                if (lastRefresh.AddSeconds(300).CompareTo(DateTime.Now) >= 0)
+                    LoadImage(false);
+            }
+            _timer?.Stop();
+            if (SecureStorage.GetAsync("user").Result == null)
+                return;
+            StartTimer();
+        }
+        void StartTimer()
+        {
+            _timer = new System.Timers.Timer(30000); // 30,000 ms = 30 seconds
+            _timer.Elapsed += (sender, e) => Bruh();
+            _timer.AutoReset = true;
+            _timer.Start();
+        }
+        private async void Bruh()
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                LoadImage(false);
             });
         }
         private async void OnLoginClicked(object sender, EventArgs e)
         {
+            var button = sender as Button;
             if (SecureStorage.GetAsync("user").Result != null)
             {
                 Logout();
                 return;
             }
+            _timer?.Stop();
+            SecureStorage.RemoveAll();
             await SecureStorage.SetAsync("username", UsernameEntry.Text);
             await SecureStorage.SetAsync("password", PasswordEntry.Text);
-            var errcode = services.CookieAttempt();
+            var errcode = services.GetCookie();
 
             switch (errcode)
             {
-                case "nologinstored":
+                case "badlogincredentials":
+                case "logout":
                     Logout();
-                    await DisplayAlert("Error", "Logging out, contact developer", "OK");
+                    await DisplayAlert("Error", "Please log again", "OK");
                     return;
                 case "error":
                     await DisplayAlert("Error", "contact developer", "OK");
@@ -64,37 +115,53 @@ namespace DPkarta
             }
 
             ChangeScreens(false);
-            Button.Text = "Logout";
-            LoadImage();
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                Button.Text = "Logout";
+            });
+            await SecureStorage.SetAsync("lastRefresh", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                LoadImage(false);
+            });
             normalBrightness = ScreenBrightness.Default.Brightness;
             ScreenBrightness.Default.Brightness = 1;
+            _timer?.Stop();
+            StartTimer();
         }
 
-        private void LoadImage()
+        private void LoadImage(bool recursion)
         {
 
-            var json = services.GetIdentification();
+            var json = services.GetQRcodeString();
             switch (json)
             {
                 case "nointernet":
                     DisplayAlert("Error", "No internet", "OK");
                     return;
+                case "badcookie":
+                case "badlogincredentials":
                 case "nocookie":
-                    switch (services.CookieAttempt())
+
+                    switch (services.GetCookie())
                     {
-                        case "error":
-                        case "nologinstored":
+                        case "badlogincredentials":
+                        case "logout":
                             Logout();
-                            DisplayAlert("Error", "Logging out, contact developer", "OK");
+                            DisplayAlert("Error", "Please log again", "OK");
+                            return;
+                        case "error":
+                            DisplayAlert("Error", "contact developer", "OK");
                             return;
                         case "nointernet":
                             DisplayAlert("Error", "No internet", "OK");
                             return;
                     }
-                    break;
+                    if (!recursion)
+                        LoadImage(true);
+
+                    return;
                 case "nosnr":
-                case "badlogincredentials":
-                case "badcookie":
                     Logout();
                     return;
             }
@@ -107,13 +174,16 @@ namespace DPkarta
             }
 
             var card = cardstruct.data;
+
             QRWebView.Source = new HtmlWebViewSource
             {
                 Html = services.GetQR(card).Content
             };
+            SecureStorage.SetAsync("lastRefresh", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
         }
         public void Logout()
         {
+            _timer?.Stop();
             SecureStorage.RemoveAll();
             ChangeScreens(true);
             if (normalBrightness != 1)
@@ -121,16 +191,22 @@ namespace DPkarta
         }
         private void ChangeScreens(bool isLogin)
         {
-            Button.Text = isLogin ? "Login" : "Logout";
-            LabelA.IsVisible = isLogin;
-            FrameA.IsVisible = isLogin;
-            FrameB.IsVisible = isLogin;
-            UsernameEntry.IsVisible = isLogin;
-            PasswordEntry.IsVisible = isLogin;
-            QRWebView.IsVisible = !isLogin;
-            RefreshButton.IsVisible = !isLogin;
+            MainThread.InvokeOnMainThreadAsync(() =>
+           {
+               Button.Text = isLogin ? "Login" : "Logout";
+               LabelA.IsVisible = isLogin;
+               FrameA.IsVisible = isLogin;
+               FrameB.IsVisible = isLogin;
+               UsernameEntry.IsVisible = isLogin;
+               PasswordEntry.IsVisible = isLogin;
+               QRWebView.IsVisible = !isLogin;
+               RefreshButton.IsVisible = !isLogin;
+           });
         }
-        private void RefreshButton_Clicked(object sender, EventArgs e) => LoadImage();
+        private void RefreshButton_Clicked(object sender, EventArgs e)
+        {
+            MainThread.InvokeOnMainThreadAsync(() => { LoadImage(false); });
+        }
         private async void OpenPrivacyPolicy(object sender, EventArgs e) => await Launcher.OpenAsync(new Uri("http://whoisalmo.cz/soukromi"));
 
     }

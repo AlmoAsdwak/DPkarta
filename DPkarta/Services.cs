@@ -11,53 +11,46 @@ namespace DPkarta
 {
     public class Services
     {
-        public string CookieAttempt()
-        {
-            string json = GetCookie();
-            switch (json)
-            {
-                case "nologinstored":
-                    return "logout";
-                case "error":
-                    return "error";
-                case "nointernet":
-                    return "nointernet";
-                default: break;
-            }
-            var user = JsonSerializer.Deserialize<User>(json);
-            if (user == null || !user.success || user.wertyzUser == null)
-                return "badlogincredentials";
-            SecureStorage.SetAsync("user", user.wertyzUser.cards[0].snr);
-            return "ok";
-        }
         public string GetCookie()
         {
             var username = SecureStorage.GetAsync("username").Result;
             var password = SecureStorage.GetAsync("password").Result;
             if (username == null || password == null)
-                return "nologinstored";
-            var errcode = Post(MainPage.loginURI, $"{{\"organizationSystemEntityId\": {MainPage.dpmhkID},\"login\":\"{username}\",\"password\":\"{password}\"}}", out Cookie? cookie);
-            if (cookie == null)
-                return "error";
-            switch (errcode)
+                return "logout";
+            var result = Post(MainPage.loginURI, $"{{\"organizationSystemEntityId\": {MainPage.dpmhkID},\"login\":\"{username}\",\"password\":\"{password}\"}}", out Cookie? cookie);
+
+            switch (result)
             {
                 case "notfound":
                     return "nointernet";
+                case null:
                 case "error":
                     return "error";
                 default:
+                    if (cookie == null || cookie.Name == null || cookie.Value == null)
+                        return "logout";
                     SecureStorage.SetAsync("cookie", cookie.ToString());
-                    return errcode;
+                    SecureStorage.SetAsync("time", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                    break;
 
             }
+
+            var user = JsonSerializer.Deserialize<User>(result);
+            if (user == null || !user.success || user.wertyzUser == null)
+                return "badlogincredentials";
+            SecureStorage.SetAsync("user", user.wertyzUser.cards[0].snr);
+            return "ok";
         }
-        public string GetIdentification()
+        public string GetQRcodeString()
         {
             var snr = SecureStorage.GetAsync("user").Result;
             if (snr == null) return "nosnr";
             var cookiestring = SecureStorage.GetAsync("cookie").Result;
             if (cookiestring == null) return "nocookie";
-            Cookie cookie = Cookiefier(cookiestring);
+
+            int index = cookiestring.IndexOf('=');
+            Cookie cookie = new(cookiestring[..index], cookiestring[(index + 1)..]);
+
             if (cookie.Name == null || cookie.Value == null) return "badcookie";
             var errcode = CookiePost(MainPage.tokenURI, $"{{\"organizationSystemEntityId\": {MainPage.dpmhkID},\"cardSnr\": \"{snr}\"}}", cookie);
             return errcode switch
@@ -66,11 +59,6 @@ namespace DPkarta
                 "error" => "badlogincredentials",
                 _ => errcode,
             };
-        }
-        public static Cookie Cookiefier(string cookie)
-        {
-            int index = cookie.IndexOf('=');
-            return new Cookie(cookie[..index], cookie[(index + 1)..]);
         }
         private string CookiePost(string url, string jsonBody, Cookie cookie)
         {
